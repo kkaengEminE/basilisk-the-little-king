@@ -70,6 +70,38 @@ describe("offerUpgrades", () => {
   });
 });
 
+describe("weapon evolutions", () => {
+  it("offers gaze evolution only after gaze_power is fully maxed", () => {
+    const stats = createStats();
+    const owned: Record<string, number> = {};
+    const evo = getUpgrade("gaze_evo")!;
+    const power = getUpgrade("gaze_power")!;
+    expect(isAvailable(evo, stats, owned)).toBe(false);
+    for (let i = 0; i < power.max; i++) takeUpgrade(power, stats, owned);
+    expect(isAvailable(evo, stats, owned)).toBe(true);
+  });
+
+  it("gaze evolution makes the gaze petrify anything and is one-shot", () => {
+    const stats = createStats();
+    const owned: Record<string, number> = {};
+    const evo = getUpgrade("gaze_evo")!;
+    takeUpgrade(evo, stats, owned);
+    expect(stats.gazeEvolved).toBe(true);
+    expect(isAvailable(evo, stats, owned)).toBe(false); // max 1
+  });
+
+  it("poison evolution requires poison unlocked AND poison_power maxed", () => {
+    const stats = createStats();
+    const owned: Record<string, number> = {};
+    const evo = getUpgrade("poison_evo")!;
+    const power = getUpgrade("poison_power")!;
+    // Maxing power is impossible before unlock (it's gated), so unlock first.
+    takeUpgrade(getUpgrade("poison_unlock")!, stats, owned);
+    for (let i = 0; i < power.max; i++) takeUpgrade(power, stats, owned);
+    expect(isAvailable(evo, stats, owned)).toBe(true);
+  });
+});
+
 describe("new defensive upgrades", () => {
   it("Stone Skin stacks armor and caps at 0.6", () => {
     const stats = createStats();

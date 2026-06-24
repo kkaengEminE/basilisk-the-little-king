@@ -11,7 +11,9 @@ export const WORLD_RADIUS = 1800; // soft circular arena bound
 
 export function updateMovement(world: World, input: Input, dt: number): void {
   const b = world.basilisk;
-  const mv = input.moveVector();
+  // Keyboard takes priority; fall back to the touch virtual joystick.
+  let mv = input.moveVector();
+  if (mv.x === 0 && mv.y === 0) mv = input.touchVector();
   const moving = mv.x !== 0 || mv.y !== 0;
 
   let targetSpeed = 0;

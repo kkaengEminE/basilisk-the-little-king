@@ -58,6 +58,17 @@
   `lifesteal`(Carrion Feast, 처치당 +4 회복). 둘 다 defense 카테고리.
 - armor는 출처 저항(reflect/rooster) 곱한 뒤 추가로 곱연산: `dealt = amount*(1-resist)*(1-armor)`.
 
+## Phase 7 (무기 진화·메타진행·접근성)
+
+- **무기 진화**(레벨업 풀에 1회성 카드로 등장): 핵심 업그레이드 만렙이 전제.
+  - `gaze_evo` Medusa's Regard — `gaze_power`(6) 만렙 시. `gazeEvolved=true`로 **모든 먹이 즉시 석화** + 시선 피해/사거리↑.
+  - `poison_evo` Plague Wind — `poison_power`(5) 만렙 + 독 해금 시. 독 dps/지속/폭/사거리 대폭↑.
+  - `tail_evo` Worldquake — `tail_power`(5) 만렙 + 꼬리 해금 시. 꼬리 피해/반경/넉백↑, 쿨↓.
+  - `Upgrade.available(stats, owned)`로 전제 검사. 진화 카드 weight 30(높게).
+- **메타진행**(영구): 영혼 = 런 누적 처치. `src/progression/meta.ts` `META_UNLOCKS` 마일스톤 자동 적용.
+  80→+20HP / 200→+0.6재생 / 400→+8%이속 / 700→독 해금 / 1100→+40마그넷. 타이틀에 진행 표시.
+  - **균형 주의(미검증)**: 후반 누적 영혼이 많아지면 시작이 강해짐 → 난이도 스케일과 함께 조정 필요할 수 있음.
+
 ## 공통
 
 - 진화 임계값(세그먼트): Egg0 / Young6 / Lesser18 / Calamity36 / Great60.

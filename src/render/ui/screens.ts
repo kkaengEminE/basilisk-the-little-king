@@ -4,6 +4,7 @@
 import type { World } from "../../entities/types";
 import type { BestRecord } from "../../core/storage";
 import { EVOLUTIONS } from "../../progression/evolution";
+import { nextUnlock, unlockedCount, META_UNLOCKS } from "../../progression/meta";
 import { COLORS, withAlpha } from "../palette";
 import { panel, text, dimScreen, formatTime, type Rect } from "./ui-kit";
 
@@ -67,10 +68,17 @@ function emblem(ctx: Ctx, cx: number, cy: number, r: number, time: number): void
   ctx.restore();
 }
 
-export function drawTitle(ctx: Ctx, vw: number, vh: number, time: number, best: BestRecord | null = null): void {
+export function drawTitle(
+  ctx: Ctx,
+  vw: number,
+  vh: number,
+  time: number,
+  best: BestRecord | null = null,
+  souls = 0,
+): void {
   const cx = vw / 2;
   const w = Math.min(560, vw * 0.86);
-  const h = 420;
+  const h = 452;
   const r: Rect = { x: cx - w / 2, y: vh / 2 - h / 2, w, h };
   panel(ctx, r, { accent: COLORS.gold, fill: COLORS.parchment });
 
@@ -95,10 +103,17 @@ export function drawTitle(ctx: Ctx, vw: number, vh: number, time: number, best: 
     color: COLORS.vermilion,
     align: "center",
   });
-  bestLine(ctx, best, cx, r.y + 378);
+  bestLine(ctx, best, cx, r.y + 376);
+
+  // Meta-progression: souls banked + next permanent unlock.
+  const nxt = nextUnlock(souls);
+  const metaText = nxt
+    ? `Souls ${souls} · Unlocks ${unlockedCount(souls)}/${META_UNLOCKS.length} · Next: ${nxt.name} (${nxt.souls})`
+    : `Souls ${souls} · All ${META_UNLOCKS.length} unlocks earned`;
+  text(ctx, metaText, cx, r.y + 394, { size: 11, color: withAlpha(COLORS.verdigrisDeep, 0.9), align: "center" });
 
   const pulse = 0.6 + 0.4 * Math.sin(time * 4);
-  text(ctx, "— Press any key to hatch —", cx, r.y + h - 26, {
+  text(ctx, "— Press any key to hatch —", cx, r.y + h - 22, {
     size: 16,
     color: withAlpha(COLORS.ink, pulse),
     align: "center",
@@ -145,7 +160,7 @@ export function drawGameOver(ctx: Ctx, world: World, vw: number, vh: number, tim
   });
 }
 
-const PAUSE_LABELS = ["Resume", "Restart Run", "Toggle Sound", "Quit to Title"];
+const PAUSE_LABELS = ["Resume", "Restart Run", "Toggle Sound", "Reduce Motion", "Quit to Title"];
 
 export function pauseButtonRects(vw: number, vh: number): Rect[] {
   const w = 248;
@@ -158,14 +173,23 @@ export function pauseButtonRects(vw: number, vh: number): Rect[] {
   return PAUSE_LABELS.map((_, i) => ({ x, y: y0 + i * (h + gap), w, h }));
 }
 
-export function drawPause(ctx: Ctx, vw: number, vh: number, muted: boolean, hover: number): void {
+export function drawPause(
+  ctx: Ctx,
+  vw: number,
+  vh: number,
+  muted: boolean,
+  reducedMotion: boolean,
+  hover: number,
+): void {
   dimScreen(ctx, vw, vh, 0.62);
   const cx = vw / 2;
   const rects = pauseButtonRects(vw, vh);
   text(ctx, "PAUSED", cx, rects[0].y - 40, { size: 34, color: COLORS.parchmentLight, align: "center", weight: "bold" });
   rects.forEach((r, i) => {
     panel(ctx, r, { accent: COLORS.gold, fill: i === hover ? COLORS.parchmentLight : COLORS.parchment });
-    const label = i === 2 ? `Sound: ${muted ? "Off" : "On"}` : PAUSE_LABELS[i];
+    let label = PAUSE_LABELS[i];
+    if (i === 2) label = `Sound: ${muted ? "Off" : "On"}`;
+    else if (i === 3) label = `Reduce Motion: ${reducedMotion ? "On" : "Off"}`;
     text(ctx, label, r.x + r.w / 2, r.y + r.h / 2 + 6, { size: 18, color: COLORS.ink, align: "center", weight: "bold" });
   });
   text(ctx, "[P] resume · [R] restart · [M] mute · [Q] quit", cx, rects[rects.length - 1].y + rects[0].h + 32, {

@@ -38,8 +38,32 @@ export function isBetter(a: BestRecord, b: BestRecord | null): boolean {
   return a.kills > b.kills;
 }
 
+export interface Meta {
+  souls: number; // lifetime kills banked across all runs
+}
+
+const META_KEY = "basilisk.meta.v1";
+
+export function loadMeta(): Meta {
+  try {
+    const r = JSON.parse(localStorage.getItem(META_KEY) ?? "{}");
+    return { souls: Math.max(0, r.souls | 0) };
+  } catch {
+    return { souls: 0 };
+  }
+}
+
+export function saveMeta(m: Meta): void {
+  try {
+    localStorage.setItem(META_KEY, JSON.stringify(m));
+  } catch {
+    /* ignore */
+  }
+}
+
 export interface Settings {
   muted: boolean;
+  reducedMotion: boolean;
 }
 
 const SETTINGS_KEY = "basilisk.settings.v1";
@@ -47,9 +71,9 @@ const SETTINGS_KEY = "basilisk.settings.v1";
 export function loadSettings(): Settings {
   try {
     const r = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? "{}");
-    return { muted: !!r.muted };
+    return { muted: !!r.muted, reducedMotion: !!r.reducedMotion };
   } catch {
-    return { muted: false };
+    return { muted: false, reducedMotion: false };
   }
 }
 
