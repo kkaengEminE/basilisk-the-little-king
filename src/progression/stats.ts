@@ -14,6 +14,7 @@ export interface PlayerStats {
   gazeCooldown: number; // seconds
   gazeDamage: number;
   petrifyThreshold: number; // enemies at/under this max-hp are instantly petrified
+  gazeEvolved: boolean; // "Medusa's Regard": petrifies any prey, regardless of hp
 
   // Poison Breath
   poisonEnabled: boolean;
@@ -55,6 +56,7 @@ export function createStats(): PlayerStats {
     gazeCooldown: 1.1,
     gazeDamage: 26,
     petrifyThreshold: 18,
+    gazeEvolved: false,
 
     poisonEnabled: false,
     poisonRange: 150,

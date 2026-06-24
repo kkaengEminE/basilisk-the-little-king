@@ -25,10 +25,11 @@ export function fireGaze(world: World): GazeResult {
   let damaged = 0;
   let hitEnemies = 0;
 
+  const petrifyThresh = s.gazeEvolved ? Infinity : s.petrifyThreshold;
   for (const p of world.prey) {
     if (p.petrified > 0) continue;
     if (!pointInCone(p, apex, b.facing, s.gazeHalfAngle, s.gazeRange)) continue;
-    if (p.maxHp <= s.petrifyThreshold) {
+    if (p.maxHp <= petrifyThresh) {
       petrify(p);
       petrified++;
       addBurst(world, p.x, p.y, COLORS.petrify, 6, 60, 2);

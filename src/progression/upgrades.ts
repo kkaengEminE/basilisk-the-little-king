@@ -17,9 +17,11 @@ export interface Upgrade {
   max: number; // maximum stacks
   weight: number; // relative draw weight
   apply: (s: PlayerStats) => void;
-  /** Optional extra gate beyond stack count. */
-  available?: (s: PlayerStats) => boolean;
+  /** Optional extra gate beyond stack count (receives current ownership). */
+  available?: (s: PlayerStats, owned: Record<string, number>) => boolean;
 }
+
+const maxed = (owned: Record<string, number>, id: string, n: number): boolean => (owned[id] ?? 0) >= n;
 
 const GAZE_CD_MIN = 0.4;
 const RESIST_CAP = 0.8;
@@ -156,6 +158,52 @@ export const UPGRADES: Upgrade[] = [
     available: (s) => s.tailEnabled,
   },
 
+  // — Weapon evolutions (appear once the core upgrade is fully maxed) —
+  {
+    id: "gaze_evo",
+    name: "★ Medusa's Regard",
+    desc: "EVOLUTION: your gaze petrifies ANY prey + heavy damage",
+    category: "gaze",
+    max: 1,
+    weight: 30,
+    apply: (s) => {
+      s.gazeEvolved = true;
+      s.gazeDamage += 30;
+      s.gazeRange *= 1.2;
+    },
+    available: (_s, owned) => maxed(owned, "gaze_power", 6),
+  },
+  {
+    id: "poison_evo",
+    name: "★ Plague Wind",
+    desc: "EVOLUTION: vast, long-lasting, far deadlier toxic clouds",
+    category: "poison",
+    max: 1,
+    weight: 30,
+    apply: (s) => {
+      s.poisonDps *= 1.8;
+      s.poisonDuration *= 1.6;
+      s.poisonHalfAngle = clamp(s.poisonHalfAngle * 1.3, 0, Math.PI / 2);
+      s.poisonRange *= 1.2;
+    },
+    available: (s, owned) => s.poisonEnabled && maxed(owned, "poison_power", 5),
+  },
+  {
+    id: "tail_evo",
+    name: "★ Worldquake",
+    desc: "EVOLUTION: a sweeping, bone-breaking shockwave",
+    category: "tail",
+    max: 1,
+    weight: 30,
+    apply: (s) => {
+      s.tailDamage *= 1.8;
+      s.tailRadius *= 1.3;
+      s.tailKnockback *= 1.4;
+      s.tailCooldown = Math.max(0.6, s.tailCooldown * 0.8);
+    },
+    available: (s, owned) => s.tailEnabled && maxed(owned, "tail_power", 5),
+  },
+
   // — Defense / resistances —
   {
     id: "reflect_resist",
@@ -269,7 +317,7 @@ export const getUpgrade = (id: string): Upgrade | undefined => BY_ID.get(id);
 /** Is this upgrade currently offerable given stats and how many are owned? */
 export function isAvailable(u: Upgrade, stats: PlayerStats, owned: Record<string, number>): boolean {
   if ((owned[u.id] ?? 0) >= u.max) return false;
-  if (u.available && !u.available(stats)) return false;
+  if (u.available && !u.available(stats, owned)) return false;
   return true;
 }
 

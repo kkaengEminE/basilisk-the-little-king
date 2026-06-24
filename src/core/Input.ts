@@ -15,6 +15,8 @@ export class Input {
   /** Pointer position in CSS pixels relative to the canvas. */
   readonly pointer: Vec2 = { x: 0, y: 0 };
   pointerDown = false;
+  /** Where the current press began — anchor for the virtual joystick. */
+  dragOrigin: Vec2 | null = null;
   /** Set on the frame a click is released; consume via takeClick(). */
   private clicked = false;
 
@@ -34,6 +36,16 @@ export class Input {
     this.target.removeEventListener("pointerdown", this.onPointerDown);
     window.removeEventListener("pointerup", this.onPointerUp);
     window.removeEventListener("blur", this.onBlur);
+  }
+
+  /** Touch/drag movement: a virtual joystick anchored at the press origin. */
+  touchVector(): Vec2 {
+    if (!this.pointerDown || !this.dragOrigin) return { x: 0, y: 0 };
+    const dx = this.pointer.x - this.dragOrigin.x;
+    const dy = this.pointer.y - this.dragOrigin.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 18) return { x: 0, y: 0 }; // dead zone — a tap shouldn't move
+    return { x: dx / len, y: dy / len };
   }
 
   /** Normalized movement direction from WASD / arrow keys ({0,0} if idle). */
@@ -99,15 +111,18 @@ export class Input {
   private onPointerDown = (e: PointerEvent): void => {
     this.pointerDown = true;
     this.onPointerMove(e);
+    this.dragOrigin = { x: this.pointer.x, y: this.pointer.y };
   };
 
   private onPointerUp = (): void => {
     if (this.pointerDown) this.clicked = true;
     this.pointerDown = false;
+    this.dragOrigin = null;
   };
 
   private onBlur = (): void => {
     this.down.clear();
     this.pointerDown = false;
+    this.dragOrigin = null;
   };
 }

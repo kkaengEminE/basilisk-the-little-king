@@ -7,7 +7,18 @@ import { GameLoop } from "./GameLoop";
 import { Input } from "./Input";
 import { Camera } from "./Camera";
 import { createRng, randomSeed } from "./rng";
-import { loadBest, saveBest, isBetter, loadSettings, saveSettings, type BestRecord } from "./storage";
+import {
+  loadBest,
+  saveBest,
+  isBetter,
+  loadSettings,
+  saveSettings,
+  loadMeta,
+  saveMeta,
+  type BestRecord,
+  type Meta,
+} from "./storage";
+import { applyMeta } from "../progression/meta";
 import { Renderer } from "../render/Renderer";
 import { AudioEngine } from "../audio/AudioEngine";
 import { COLORS, withAlpha } from "../render/palette";
@@ -70,13 +81,17 @@ export class Game {
   private renderTime = 0; // wall-clock-ish time for menu animations
   private readonly audio = new AudioEngine();
   private best: BestRecord | null = loadBest();
+  private meta: Meta = loadMeta();
+  private reducedMotion = false;
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new Renderer(canvas);
     this.input = new Input(canvas);
     window.addEventListener("resize", () => this.onResize());
     this.onResize();
-    this.audio.muted = loadSettings().muted; // restore the saved sound preference
+    const settings = loadSettings(); // restore saved sound / motion preferences
+    this.audio.muted = settings.muted;
+    this.reducedMotion = settings.reducedMotion;
     this.newRun(); // build an initial world so the title can sit over a calm map
     this.phase = "title";
     this.loop = new GameLoop(
@@ -119,6 +134,7 @@ export class Game {
   private newRun(mapIndex = 0): void {
     const map = MAPS[mapIndex];
     const stats = createStats();
+    applyMeta(stats, this.meta.souls); // permanent meta-progression bonuses
     const basilisk = createBasilisk(0, 0);
     this.world = {
       rng: createRng(randomSeed()),
@@ -244,6 +260,14 @@ export class Game {
     this.audio.play("pick");
     // Heal by any max-HP increase so vitality upgrades feel good.
     if (w.stats.maxHp > oldMax) w.hp = Math.min(w.stats.maxHp, w.hp + (w.stats.maxHp - oldMax));
+    // Announce weapon evolutions.
+    if (u.id.endsWith("_evo")) {
+      w.bannerText = u.name.replace("★ ", "");
+      w.bannerSub = "Your weapon has evolved!";
+      w.bannerTime = 2.8;
+      w.goldFlash = 1;
+      this.audio.play("evolve");
+    }
     w.pendingLevels = Math.max(0, w.pendingLevels - 1);
     if (w.pendingLevels > 0) this.rollOffers();
     else this.phase = "playing";
@@ -257,7 +281,7 @@ export class Game {
     if (this.input.anyPressed() || this.input.pointerDown) this.audio.ensure();
     if (this.input.wasPressed("m")) {
       this.audio.toggleMute();
-      saveSettings({ muted: this.audio.muted });
+      saveSettings({ muted: this.audio.muted, reducedMotion: this.reducedMotion });
     }
     switch (this.phase) {
       case "title":
@@ -308,6 +332,10 @@ export class Game {
     updateCollisions(w);
     updateEffects(w, dt);
 
+    // Touch-drag is movement here, so discard any tap so it can't leak into
+    // the next menu (where takeClick() is used for buttons).
+    this.input.takeClick();
+
     // Drain queued sound events to the audio layer.
     for (const s of w.sounds) this.audio.play(s);
     w.sounds.length = 0;
@@ -339,6 +367,9 @@ export class Game {
       this.best = rec;
       saveBest(rec);
     }
+    // Bank this run's kills as permanent "souls" toward meta unlocks.
+    this.meta.souls += w.kills;
+    saveMeta(this.meta);
   }
 
   private updateLevelUp(): void {
@@ -394,9 +425,14 @@ export class Game {
     switch (i) {
       case 0: this.phase = "playing"; break;
       case 1: this.beginPlaying(); break;
-      case 2: this.audio.toggleMute(); saveSettings({ muted: this.audio.muted }); break;
-      case 3: this.phase = "title"; break;
+      case 2: this.audio.toggleMute(); this.persistSettings(); break;
+      case 3: this.reducedMotion = !this.reducedMotion; this.persistSettings(); break;
+      case 4: this.phase = "title"; break;
     }
+  }
+
+  private persistSettings(): void {
+    saveSettings({ muted: this.audio.muted, reducedMotion: this.reducedMotion });
   }
 
   // ── render ─────────────────────────────────────────────────────────────
@@ -410,8 +446,9 @@ export class Game {
     r.beginFrame(this.camera);
 
     // World (skipped detail on the title screen — show a calm empty map).
-    const sx = w.shake > 0 ? (Math.random() * 2 - 1) * w.shake : 0;
-    const sy = w.shake > 0 ? (Math.random() * 2 - 1) * w.shake : 0;
+    const shake = this.reducedMotion ? 0 : w.shake;
+    const sx = shake > 0 ? (Math.random() * 2 - 1) * shake : 0;
+    const sy = shake > 0 ? (Math.random() * 2 - 1) * shake : 0;
     r.beginWorld(this.camera, sx, sy);
     const ctx = r.ctx;
     if (this.phase !== "title") {
@@ -449,13 +486,12 @@ export class Game {
 
     r.drawVignette();
 
-    // Hit flash: a red wash that fades after taking damage.
-    if (w.hurtFlash > 0) {
+    // Screen flashes (suppressed under reduced-motion).
+    if (!this.reducedMotion && w.hurtFlash > 0) {
       ctx.fillStyle = withAlpha(COLORS.vermilion, w.hurtFlash * 0.3);
       ctx.fillRect(0, 0, vw, vh);
     }
-    // Gold flash: a warm pulse on level-up / evolution.
-    if (w.goldFlash > 0) {
+    if (!this.reducedMotion && w.goldFlash > 0) {
       ctx.fillStyle = withAlpha(COLORS.goldLight, w.goldFlash * 0.22);
       ctx.fillRect(0, 0, vw, vh);
     }
@@ -463,7 +499,7 @@ export class Game {
     // Screen-space UI.
     switch (this.phase) {
       case "title":
-        drawTitle(ctx, vw, vh, this.renderTime, this.best);
+        drawTitle(ctx, vw, vh, this.renderTime, this.best, this.meta.souls);
         break;
       case "playing":
         drawHud(ctx, w, vw, vh, this.audio.muted);
@@ -474,7 +510,7 @@ export class Game {
         const prects = pauseButtonRects(vw, vh);
         let hover = -1;
         for (let i = 0; i < prects.length; i++) if (pointInRect(x, y, prects[i])) hover = i;
-        drawPause(ctx, vw, vh, this.audio.muted, hover);
+        drawPause(ctx, vw, vh, this.audio.muted, this.reducedMotion, hover);
         break;
       }
       case "levelUp":
@@ -492,6 +528,36 @@ export class Game {
         drawWin(ctx, w, vw, vh, this.renderTime, this.best);
         break;
     }
+
+    // Virtual joystick (touch / drag) while playing.
+    if (this.phase === "playing" && this.input.pointerDown && this.input.dragOrigin) {
+      this.drawJoystick(ctx);
+    }
+  }
+
+  private drawJoystick(ctx: CanvasRenderingContext2D): void {
+    const o = this.input.dragOrigin!;
+    const p = this.input.pointer;
+    const R = 58;
+    const dx = p.x - o.x;
+    const dy = p.y - o.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const k = len > R ? R / len : 1;
+    const kx = o.x + dx * k;
+    const ky = o.y + dy * k;
+    ctx.strokeStyle = withAlpha(COLORS.ink, 0.35);
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(o.x, o.y, R, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = withAlpha(COLORS.gold, 0.5);
+    ctx.beginPath();
+    ctx.arc(kx, ky, 22, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = withAlpha(COLORS.ink, 0.6);
+    ctx.beginPath();
+    ctx.arc(kx, ky, 22, 0, Math.PI * 2);
+    ctx.stroke();
   }
 
   private hoverCard(): number {

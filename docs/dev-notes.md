@@ -40,6 +40,16 @@
 - **일시정지**: phase `paused`(P/Esc). 클릭 버튼(`pauseButtonRects`) + 키(P 재개/R 재시작/Q 타이틀/M 음소거).
 - **설정 저장**: `storage.ts`의 `loadSettings/saveSettings`(음소거). 생성자에서 복원, 음소거 토글 시 저장.
 
+## 접근성 / 입력 (Phase 7)
+
+- **터치 가상 조이스틱**: `Input.dragOrigin`(누른 지점) + `touchVector()`(드래그 방향, 데드존 18px).
+  `updateMovement`에서 키보드 우선, 0이면 터치 폴백. **함정**: 플레이 중 탭이 다음 메뉴로 새지 않도록
+  `updatePlaying`에서 매 틱 `input.takeClick()`로 보류 클릭을 버린다(메뉴는 `takeClick`으로 버튼 처리).
+- **모션 감소**: `settings.reducedMotion`. `Game.render`에서 화면 흔들림(sx/sy)·hurtFlash·goldFlash를 게이트.
+  일시정지 메뉴 버튼(인덱스 3)으로 토글, localStorage 저장. (시뮬레이션의 shake 값은 그대로 쌓이되 렌더만 무시.)
+- **메타진행 적용 순서**: `newRun`에서 `createStats()` → `applyMeta(stats, souls)` → world 생성(`hp = stats.maxHp`).
+  런 종료(`recordRun`)에 `souls += kills` 후 저장.
+
 ## 아키텍처 원칙
 
 - 시뮬레이션(엔티티/시스템)과 렌더 완전 분리 — 렌더는 교체 가능(절차적 아트 → 추후 PNG 가능).
