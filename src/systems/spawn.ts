@@ -14,6 +14,7 @@ import {
   spawnKnight,
   spawnPriest,
   spawnRoosterHandler,
+  spawnWeasel,
 } from "../entities/enemies";
 import { vecFromAngle } from "../core/math";
 import { WORLD_RADIUS } from "./movement";
@@ -35,10 +36,11 @@ export interface SpawnState {
   roosterTimer: number;
   mirrorTimer: number;
   humanTimer: number;
+  bossSpawned: boolean;
 }
 
 export function createSpawnState(): SpawnState {
-  return { preyTimer: 0.5, roosterTimer: 0, mirrorTimer: 0, humanTimer: 0 };
+  return { preyTimer: 0.5, roosterTimer: 0, mirrorTimer: 0, humanTimer: 0, bossSpawned: false };
 }
 
 function ringPoint(world: World): { x: number; y: number } {
@@ -142,5 +144,12 @@ export function updateSpawning(world: World, map: MapDef, state: SpawnState, dt:
       const { x, y } = ringPoint(world);
       HUMAN_SPAWNERS[pickHumanKind(world, map.humanWeights)](world, x, y);
     }
+  }
+
+  // — Boss: the Weasel prowls in once, mid-to-late in the stage —
+  if (!state.bossSpawned && t >= map.duration * 0.62) {
+    state.bossSpawned = true;
+    const { x, y } = ringPoint(world);
+    spawnWeasel(world, x, y);
   }
 }

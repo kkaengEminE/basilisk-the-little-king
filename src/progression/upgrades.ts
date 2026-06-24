@@ -193,6 +193,24 @@ export const UPGRADES: Upgrade[] = [
     weight: 7,
     apply: (s) => (s.regen += 1.0),
   },
+  {
+    id: "armor",
+    name: "Stone Skin",
+    desc: "+12% reduction to all incoming damage",
+    category: "defense",
+    max: 4,
+    weight: 8,
+    apply: (s) => (s.armor = clamp(s.armor + 0.12, 0, 0.6)),
+  },
+  {
+    id: "lifesteal",
+    name: "Carrion Feast",
+    desc: "Heal +4 each time a foe is slain",
+    category: "defense",
+    max: 4,
+    weight: 7,
+    apply: (s) => (s.lifesteal += 4),
+  },
 
   // — Movement —
   {

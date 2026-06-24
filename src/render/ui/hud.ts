@@ -72,7 +72,7 @@ export function drawHud(ctx: Ctx, world: World, vw: number, _vh: number, muted =
 
   // — Subtle controls hint early in the run —
   if (world.time < 8) {
-    text(ctx, "Move with WASD / Arrows · your gaze and breath strike on their own", cx, _vh - 24, {
+    text(ctx, "Move with WASD / Arrows · gaze & breath strike on their own · [P] pause · [M] mute", cx, _vh - 24, {
       size: 13,
       color: withAlpha(COLORS.ink, 0.6),
       align: "center",

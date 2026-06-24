@@ -82,6 +82,17 @@ const HANDLER = {
   summonCap: 3, // won't summon past this many roosters total
 };
 
+const WEASEL = {
+  radius: 18,
+  hp: 420,
+  speed: 96, // prowls; lunges much faster
+  lungeSpeed: 320,
+  contactDamage: 24,
+  xpValue: 120,
+  lungeInterval: 2.4,
+  lungeTime: 0.45, // seconds of a lunge burst
+};
+
 function base(world: World, kind: Enemy["kind"], x: number, y: number): Enemy {
   return {
     id: newId(world),
@@ -207,6 +218,30 @@ export function spawnRoosterHandler(world: World, x: number, y: number): Enemy {
   return e;
 }
 
+/**
+ * The Weasel — the basilisk's mythological bane. A fast, tanky boss that prowls
+ * and periodically lunges. Gaze-immune (the weasel is unaffected by the stare),
+ * so it must be poisoned, tail-slammed, and dodged. One per stage.
+ */
+export function spawnWeasel(world: World, x: number, y: number): Enemy {
+  const e = base(world, "weasel", x, y);
+  Object.assign(e, {
+    radius: WEASEL.radius,
+    hp: WEASEL.hp,
+    maxHp: WEASEL.hp,
+    speed: WEASEL.speed,
+    attackTimer: WEASEL.lungeInterval,
+    contactDamage: WEASEL.contactDamage,
+    gazeImmune: true,
+    xpValue: WEASEL.xpValue,
+  });
+  world.enemies.push(e);
+  world.bannerText = "THE WEASEL STIRS";
+  world.bannerSub = "The basilisk's ancient bane has caught your scent.";
+  world.bannerTime = 3;
+  return e;
+}
+
 function crow(world: World, e: Enemy): void {
   world.waves.push({
     x: e.x,
@@ -255,7 +290,16 @@ export function updateEnemies(world: World, dt: number): void {
     if (e.hp <= 0) {
       e.alive = false;
       addWorldXp(world, e.xpValue);
-      addBurst(world, e.x, e.y, e.kind === "rooster" ? COLORS.vermilion : COLORS.bone, 16, 130, 3);
+      if (world.stats.lifesteal > 0) {
+        world.hp = Math.min(world.stats.maxHp, world.hp + world.stats.lifesteal);
+      }
+      const big = e.kind === "weasel";
+      addBurst(world, e.x, e.y, e.kind === "rooster" ? COLORS.vermilion : COLORS.bone, big ? 40 : 18, big ? 200 : 140, big ? 5 : 3);
+      if (big) {
+        world.bannerText = "The Weasel is slain";
+        world.bannerSub = "The basilisk's bane lies broken.";
+        world.bannerTime = 2.6;
+      }
       list.splice(i, 1);
       continue;
     }
@@ -323,6 +367,16 @@ export function updateEnemies(world: World, dt: number): void {
             sfx(world, "summon");
           }
         }
+        break;
+      }
+      case "weasel": {
+        // Prowl, then lunge in fast bursts toward the basilisk.
+        e.attackTimer -= dt;
+        const lunging = e.attackTimer < WEASEL.lungeTime;
+        const spd = (lunging ? WEASEL.lungeSpeed : WEASEL.speed) * slow;
+        const dir = vecFromAngle(angleOf({ x: b.x - e.x, y: b.y - e.y }), spd);
+        steer(e, dir.x, dir.y, dt, lunging ? 8 : 3);
+        if (e.attackTimer <= 0) e.attackTimer = WEASEL.lungeInterval;
         break;
       }
     }

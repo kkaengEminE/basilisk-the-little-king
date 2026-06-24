@@ -7,7 +7,7 @@ import { GameLoop } from "./GameLoop";
 import { Input } from "./Input";
 import { Camera } from "./Camera";
 import { createRng, randomSeed } from "./rng";
-import { loadBest, saveBest, isBetter, type BestRecord } from "./storage";
+import { loadBest, saveBest, isBetter, loadSettings, saveSettings, type BestRecord } from "./storage";
 import { Renderer } from "../render/Renderer";
 import { AudioEngine } from "../audio/AudioEngine";
 import { COLORS, withAlpha } from "../render/palette";
@@ -38,6 +38,7 @@ import {
   drawKnight,
   drawPriest,
   drawRoosterHandler,
+  drawWeasel,
   drawArrow,
   drawSoundWave,
   drawPoisonCloud,
@@ -49,10 +50,10 @@ import {
 } from "../render/sprites";
 import { drawHud } from "../render/ui/hud";
 import { drawLevelUp, levelUpCardRects } from "../render/ui/levelup";
-import { drawTitle, drawGameOver, drawWin, drawStageClear } from "../render/ui/screens";
+import { drawTitle, drawGameOver, drawWin, drawStageClear, drawPause, pauseButtonRects } from "../render/ui/screens";
 import { pointInRect, type Rect } from "../render/ui/ui-kit";
 
-type Phase = "title" | "playing" | "levelUp" | "stageClear" | "gameOver" | "win";
+type Phase = "title" | "playing" | "paused" | "levelUp" | "stageClear" | "gameOver" | "win";
 
 export class Game {
   private readonly renderer: Renderer;
@@ -75,6 +76,7 @@ export class Game {
     this.input = new Input(canvas);
     window.addEventListener("resize", () => this.onResize());
     this.onResize();
+    this.audio.muted = loadSettings().muted; // restore the saved sound preference
     this.newRun(); // build an initial world so the title can sit over a calm map
     this.phase = "title";
     this.loop = new GameLoop(
@@ -147,6 +149,7 @@ export class Game {
       gazeFlash: 0,
       tailFlash: 0,
       hurtFlash: 0,
+      goldFlash: 0,
       sounds: [],
       bannerText: "",
       bannerSub: "",
@@ -203,6 +206,7 @@ export class Game {
     w.tailTimer = w.stats.tailCooldown;
     w.shake = 0;
     w.hurtFlash = 0;
+    w.goldFlash = 0;
     w.sounds.length = 0;
 
     scatterWater(w, map);
@@ -216,6 +220,7 @@ export class Game {
 
   private openLevelUp(): void {
     this.phase = "levelUp";
+    this.world.goldFlash = 1;
     this.audio.play("levelUp");
     this.rollOffers();
   }
@@ -250,13 +255,23 @@ export class Game {
     this.renderTime += dt;
     // Any input is a gesture that lets us start/resume audio; M toggles mute.
     if (this.input.anyPressed() || this.input.pointerDown) this.audio.ensure();
-    if (this.input.wasPressed("m")) this.audio.toggleMute();
+    if (this.input.wasPressed("m")) {
+      this.audio.toggleMute();
+      saveSettings({ muted: this.audio.muted });
+    }
     switch (this.phase) {
       case "title":
         if (this.input.anyPressed() || this.input.takeClick()) this.beginPlaying();
         break;
       case "playing":
+        if (this.input.wasPressed("p") || this.input.wasPressed("escape")) {
+          this.phase = "paused";
+          break;
+        }
         this.updatePlaying(dt);
+        break;
+      case "paused":
+        this.updatePaused();
         break;
       case "levelUp":
         this.updateLevelUp();
@@ -350,6 +365,40 @@ export class Game {
     }
   }
 
+  private updatePaused(): void {
+    if (this.input.wasPressed("p") || this.input.wasPressed("escape")) {
+      this.phase = "playing";
+      return;
+    }
+    if (this.input.wasPressed("r")) {
+      this.beginPlaying();
+      return;
+    }
+    if (this.input.wasPressed("q")) {
+      this.phase = "title";
+      return;
+    }
+    if (this.input.takeClick()) {
+      const rects = pauseButtonRects(this.renderer.width, this.renderer.height);
+      const { x, y } = this.input.pointer;
+      for (let i = 0; i < rects.length; i++) {
+        if (pointInRect(x, y, rects[i])) {
+          this.pauseAction(i);
+          return;
+        }
+      }
+    }
+  }
+
+  private pauseAction(i: number): void {
+    switch (i) {
+      case 0: this.phase = "playing"; break;
+      case 1: this.beginPlaying(); break;
+      case 2: this.audio.toggleMute(); saveSettings({ muted: this.audio.muted }); break;
+      case 3: this.phase = "title"; break;
+    }
+  }
+
   // ── render ─────────────────────────────────────────────────────────────
 
   private render(): void {
@@ -366,13 +415,19 @@ export class Game {
     r.beginWorld(this.camera, sx, sy);
     const ctx = r.ctx;
     if (this.phase !== "title") {
-      for (const h of w.hazards) drawHazard(ctx, h);
-      for (const c of w.clouds) drawPoisonCloud(ctx, c);
+      // Viewport culling: only draw what is on (or near) screen.
+      const vb = this.camera.viewBounds(90);
+      const vis = (x: number, y: number, pad = 0) =>
+        x >= vb.minX - pad && x <= vb.maxX + pad && y >= vb.minY - pad && y <= vb.maxY + pad;
+
+      for (const h of w.hazards) if (vis(h.x, h.y, h.radius)) drawHazard(ctx, h);
+      for (const c of w.clouds) if (vis(c.x, c.y, c.radius)) drawPoisonCloud(ctx, c);
       drawGazeCone(ctx, w);
       drawTailSlam(ctx, w);
-      for (const p of w.prey) drawPrey(ctx, p);
-      for (const proj of w.projectiles) drawArrow(ctx, proj);
+      for (const p of w.prey) if (vis(p.x, p.y, p.radius)) drawPrey(ctx, p);
+      for (const proj of w.projectiles) if (vis(proj.x, proj.y, 12)) drawArrow(ctx, proj);
       for (const e of w.enemies) {
+        if (!vis(e.x, e.y, e.radius * 3)) continue; // weasel/tail feathers extend
         switch (e.kind) {
           case "rooster": drawRooster(ctx, e, this.renderTime); break;
           case "mirrorBearer": drawMirrorBearer(ctx, e); break;
@@ -380,12 +435,13 @@ export class Game {
           case "knight": drawKnight(ctx, e); break;
           case "priest": drawPriest(ctx, e); break;
           case "roosterHandler": drawRoosterHandler(ctx, e, this.renderTime); break;
+          case "weasel": drawWeasel(ctx, e, this.renderTime); break;
         }
       }
       for (const wave of w.waves) drawSoundWave(ctx, wave);
       drawBasilisk(ctx, w, this.renderTime);
-      for (const part of w.particles) drawParticle(ctx, part);
-      for (const t of w.texts) drawFloatText(ctx, t);
+      for (const part of w.particles) if (vis(part.x, part.y, part.size)) drawParticle(ctx, part);
+      for (const t of w.texts) if (vis(t.x, t.y, 40)) drawFloatText(ctx, t);
     } else {
       drawBasilisk(ctx, w, this.renderTime);
     }
@@ -398,6 +454,11 @@ export class Game {
       ctx.fillStyle = withAlpha(COLORS.vermilion, w.hurtFlash * 0.3);
       ctx.fillRect(0, 0, vw, vh);
     }
+    // Gold flash: a warm pulse on level-up / evolution.
+    if (w.goldFlash > 0) {
+      ctx.fillStyle = withAlpha(COLORS.goldLight, w.goldFlash * 0.22);
+      ctx.fillRect(0, 0, vw, vh);
+    }
 
     // Screen-space UI.
     switch (this.phase) {
@@ -407,6 +468,15 @@ export class Game {
       case "playing":
         drawHud(ctx, w, vw, vh, this.audio.muted);
         break;
+      case "paused": {
+        drawHud(ctx, w, vw, vh, this.audio.muted);
+        const { x, y } = this.input.pointer;
+        const prects = pauseButtonRects(vw, vh);
+        let hover = -1;
+        for (let i = 0; i < prects.length; i++) if (pointInRect(x, y, prects[i])) hover = i;
+        drawPause(ctx, vw, vh, this.audio.muted, hover);
+        break;
+      }
       case "levelUp":
         drawHud(ctx, w, vw, vh, this.audio.muted);
         drawLevelUp(ctx, this.offers, levelUpCardRects(vw, vh, this.offers.length), this.hoverCard(), vw, vh);

@@ -37,6 +37,7 @@ export function makeWorld(over: Partial<World> = {}): World {
     gazeFlash: 0,
     tailFlash: 0,
     hurtFlash: 0,
+    goldFlash: 0,
     sounds: [],
     bannerText: "",
     bannerSub: "",

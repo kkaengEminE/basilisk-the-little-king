@@ -541,6 +541,76 @@ export function drawRoosterHandler(ctx: Ctx, e: Enemy, time: number): void {
   }
 }
 
+export function drawWeasel(ctx: Ctx, e: Enemy, time: number): void {
+  const r = e.radius;
+  const a = Math.atan2(e.vy, e.vx);
+  ctx.save();
+  ctx.translate(e.x, e.y);
+  ctx.rotate(a);
+  // Tail.
+  ctx.strokeStyle = "#7a5230";
+  ctx.lineWidth = r * 0.5;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(-r * 1.5, 0);
+  ctx.quadraticCurveTo(-r * 2.6, Math.sin(time * 8) * r * 0.5, -r * 3.3, 0);
+  ctx.stroke();
+  // Elongated body.
+  ctx.fillStyle = INK;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, r * 1.95, r * 0.88, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#7a5230";
+  ctx.beginPath();
+  ctx.ellipse(0, 0, r * 1.78, r * 0.74, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = withAlpha(COLORS.bone, 0.5);
+  ctx.beginPath();
+  ctx.ellipse(0, r * 0.28, r * 1.3, r * 0.3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Little scurrying legs.
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = r * 0.22;
+  const sw = Math.sin(time * 16) * r * 0.32;
+  for (const lx of [-r * 0.8, r * 0.6]) {
+    ctx.beginPath();
+    ctx.moveTo(lx, r * 0.5);
+    ctx.lineTo(lx + sw, r * 1.05);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(lx, -r * 0.5);
+    ctx.lineTo(lx - sw, -r * 1.05);
+    ctx.stroke();
+  }
+  // Head + snout + glaring eyes.
+  ctx.fillStyle = "#7a5230";
+  blob(ctx, r * 1.65, 0, r * 0.72);
+  ctx.fillStyle = "#5a3c22";
+  blob(ctx, r * 1.35, -r * 0.5, r * 0.2);
+  blob(ctx, r * 1.35, r * 0.5, r * 0.2);
+  ctx.fillStyle = INK;
+  ctx.beginPath();
+  ctx.moveTo(r * 2.4, 0);
+  ctx.lineTo(r * 1.9, -r * 0.3);
+  ctx.lineTo(r * 1.9, r * 0.3);
+  ctx.closePath();
+  ctx.fill();
+  const glow = 0.6 + 0.4 * Math.sin(time * 6);
+  ctx.fillStyle = withAlpha(COLORS.vermilion, glow);
+  blob(ctx, r * 1.7, -r * 0.28, r * 0.15);
+  blob(ctx, r * 1.7, r * 0.28, r * 0.15);
+  ctx.restore();
+
+  // Boss health bar.
+  const w = r * 4;
+  const bx = e.x - w / 2;
+  const by = e.y - r * 2.6;
+  ctx.fillStyle = withAlpha(INK, 0.6);
+  ctx.fillRect(bx - 1, by - 1, w + 2, 6);
+  ctx.fillStyle = COLORS.vermilion;
+  ctx.fillRect(bx, by, w * Math.max(0, e.hp / e.maxHp), 4);
+}
+
 export function drawArrow(ctx: Ctx, p: { x: number; y: number; vx: number; vy: number }): void {
   const a = Math.atan2(p.vy, p.vx);
   ctx.save();

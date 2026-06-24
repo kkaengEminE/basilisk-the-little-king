@@ -37,3 +37,26 @@ export function isBetter(a: BestRecord, b: BestRecord | null): boolean {
   if (a.time !== b.time) return a.time > b.time;
   return a.kills > b.kills;
 }
+
+export interface Settings {
+  muted: boolean;
+}
+
+const SETTINGS_KEY = "basilisk.settings.v1";
+
+export function loadSettings(): Settings {
+  try {
+    const r = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? "{}");
+    return { muted: !!r.muted };
+  } catch {
+    return { muted: false };
+  }
+}
+
+export function saveSettings(s: Settings): void {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+  } catch {
+    /* ignore */
+  }
+}
