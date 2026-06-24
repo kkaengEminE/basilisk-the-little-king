@@ -70,6 +70,24 @@ describe("offerUpgrades", () => {
   });
 });
 
+describe("new defensive upgrades", () => {
+  it("Stone Skin stacks armor and caps at 0.6", () => {
+    const stats = createStats();
+    const owned: Record<string, number> = {};
+    const u = getUpgrade("armor")!;
+    for (let i = 0; i < u.max; i++) takeUpgrade(u, stats, owned);
+    expect(stats.armor).toBeCloseTo(Math.min(0.6, 0.12 * u.max));
+    expect(stats.armor).toBeLessThanOrEqual(0.6);
+  });
+
+  it("Carrion Feast raises lifesteal", () => {
+    const stats = createStats();
+    expect(stats.lifesteal).toBe(0);
+    takeUpgrade(getUpgrade("lifesteal")!, stats, {});
+    expect(stats.lifesteal).toBe(4);
+  });
+});
+
 describe("takeUpgrade", () => {
   it("applies effects and increments the owned count", () => {
     const stats = createStats();

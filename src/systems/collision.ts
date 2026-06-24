@@ -14,7 +14,8 @@ const HIT_INVULN = 0.7; // i-frames after a hit (s)
 /** Apply damage to the basilisk, mitigated by a 0..1 resistance + i-frames. */
 export function damageBasilisk(world: World, amount: number, resist = 0): void {
   if (world.invuln > 0) return;
-  const dealt = amount * (1 - resist);
+  // Source-specific resistance, then the flat Stone-Skin armor on top.
+  const dealt = amount * (1 - resist) * (1 - world.stats.armor);
   if (dealt <= 0) return;
   world.hp = clamp(world.hp - dealt, 0, world.stats.maxHp);
   world.invuln = HIT_INVULN;
@@ -36,6 +37,7 @@ function evolve(world: World, stageIndex: number): void {
   world.bannerTime = 3.2;
   addShake(world, 10);
   addBurst(world, world.basilisk.x, world.basilisk.y, COLORS.gold, 28, 160, 4);
+  world.goldFlash = 1;
   sfx(world, "evolve");
 }
 

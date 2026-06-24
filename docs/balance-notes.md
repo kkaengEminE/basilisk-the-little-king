@@ -48,6 +48,16 @@
   판정 순서. 같은 틱에 치명타→판정이라 정상 사망하지만, 외부에서 `hp=0`만 찍으면
   다음 틱 regen이 되살림. 자동 테스트로 죽일 땐 `stats.regen=0`도 함께 설정할 것.
 
+## Phase 6 (보스·확장)
+
+- **족제비 보스(Weasel)**: hp 420, 평소 96·러지 320(0.45s 버스트, 2.4s 주기), 접촉 24, xp 120.
+  **gazeImmune**(신화상 바실리스크 천적) → 독/꼬리/회피로만 처치. 스테이지 진행 62% 시점 1마리 스폰.
+  보스 머리 위 체력바, 등장/처치 배너. **균형 주의(미검증)**: 후반 맵에서 다른 적과 겹치면 가혹할 수
+  있음 → `WEASEL.hp`/`lungeSpeed`/스폰 시점(`map.duration*0.62`) 조정 레버.
+- **신규 업그레이드**: `armor`(Stone Skin, +12%/스택, 상한 0.6, 모든 피해 감소) ·
+  `lifesteal`(Carrion Feast, 처치당 +4 회복). 둘 다 defense 카테고리.
+- armor는 출처 저항(reflect/rooster) 곱한 뒤 추가로 곱연산: `dealt = amount*(1-resist)*(1-armor)`.
+
 ## 공통
 
 - 진화 임계값(세그먼트): Egg0 / Young6 / Lesser18 / Calamity36 / Great60.

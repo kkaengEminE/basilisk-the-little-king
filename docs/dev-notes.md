@@ -31,6 +31,15 @@
 - **최고기록**: `src/core/storage.ts`(localStorage, try/catch 가드). 게임오버/승리 시 `recordRun()`이
   furthest-realm→time→kills 기준으로 갱신. 타이틀/게임오버/승리 화면에 표시.
 
+## 성능 / UX (Phase 6)
+
+- **렌더 뷰포트 컬링**: `Game.render`가 `camera.viewBounds(margin)`로 화면 밖 개체(먹이·적·발사체·
+  파티클·텍스트·위험요소)를 그리기 전에 걸러냄. 시뮬레이션은 전부 도는데 **그리기만** 생략 →
+  개체 많을 때 렌더 비용 절감. (참고: 정식 대규모 FPS 벤치마크는 아직 안 함 — 후속 가능.)
+  실제 교차 루프(사제×적, 독구름×개체)는 캡이 작아 O(n²) 영향 미미. 더 키우려면 공간 격자 도입.
+- **일시정지**: phase `paused`(P/Esc). 클릭 버튼(`pauseButtonRects`) + 키(P 재개/R 재시작/Q 타이틀/M 음소거).
+- **설정 저장**: `storage.ts`의 `loadSettings/saveSettings`(음소거). 생성자에서 복원, 음소거 토글 시 저장.
+
 ## 아키텍처 원칙
 
 - 시뮬레이션(엔티티/시스템)과 렌더 완전 분리 — 렌더는 교체 가능(절차적 아트 → 추후 PNG 가능).

@@ -50,7 +50,8 @@ export type EnemyKind =
   | "hunter" // ranged: fires arrows, keeps distance
   | "knight" // armored melee: tanky, partial gaze resistance
   | "priest" // support: heals nearby enemies
-  | "roosterHandler"; // summons roosters
+  | "roosterHandler" // summons roosters
+  | "weasel"; // boss: the basilisk's mythological bane — fast lunging, gaze-immune
 
 export interface Enemy {
   id: number;
@@ -187,6 +188,7 @@ export interface World {
   gazeFlash: number; // brief render flash after a gaze fires
   tailFlash: number; // 0..1 expanding shock ring after a tail slam
   hurtFlash: number; // 0..1 red screen flash when the basilisk is hit
+  goldFlash: number; // 0..1 gold screen flash on level-up / evolution
   /** Sound-event tags pushed by systems this tick; drained by the audio layer. */
   sounds: string[];
   bannerText: string; // big centered announcement (e.g. evolution); "" = none

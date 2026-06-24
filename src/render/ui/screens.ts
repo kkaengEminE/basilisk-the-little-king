@@ -145,6 +145,36 @@ export function drawGameOver(ctx: Ctx, world: World, vw: number, vh: number, tim
   });
 }
 
+const PAUSE_LABELS = ["Resume", "Restart Run", "Toggle Sound", "Quit to Title"];
+
+export function pauseButtonRects(vw: number, vh: number): Rect[] {
+  const w = 248;
+  const h = 46;
+  const gap = 14;
+  const n = PAUSE_LABELS.length;
+  const totalH = n * h + (n - 1) * gap;
+  const x = vw / 2 - w / 2;
+  const y0 = vh / 2 - totalH / 2 + 12;
+  return PAUSE_LABELS.map((_, i) => ({ x, y: y0 + i * (h + gap), w, h }));
+}
+
+export function drawPause(ctx: Ctx, vw: number, vh: number, muted: boolean, hover: number): void {
+  dimScreen(ctx, vw, vh, 0.62);
+  const cx = vw / 2;
+  const rects = pauseButtonRects(vw, vh);
+  text(ctx, "PAUSED", cx, rects[0].y - 40, { size: 34, color: COLORS.parchmentLight, align: "center", weight: "bold" });
+  rects.forEach((r, i) => {
+    panel(ctx, r, { accent: COLORS.gold, fill: i === hover ? COLORS.parchmentLight : COLORS.parchment });
+    const label = i === 2 ? `Sound: ${muted ? "Off" : "On"}` : PAUSE_LABELS[i];
+    text(ctx, label, r.x + r.w / 2, r.y + r.h / 2 + 6, { size: 18, color: COLORS.ink, align: "center", weight: "bold" });
+  });
+  text(ctx, "[P] resume · [R] restart · [M] mute · [Q] quit", cx, rects[rects.length - 1].y + rects[0].h + 32, {
+    size: 13,
+    color: withAlpha(COLORS.parchmentLight, 0.8),
+    align: "center",
+  });
+}
+
 export function drawStageClear(
   ctx: Ctx,
   fromName: string,

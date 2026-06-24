@@ -69,6 +69,7 @@ export function updateEffects(world: World, dt: number): void {
   if (world.gazeFlash > 0) world.gazeFlash = Math.max(0, world.gazeFlash - dt * 4);
   if (world.tailFlash > 0) world.tailFlash = Math.max(0, world.tailFlash - dt * 2.5);
   if (world.hurtFlash > 0) world.hurtFlash = Math.max(0, world.hurtFlash - dt * 3);
+  if (world.goldFlash > 0) world.goldFlash = Math.max(0, world.goldFlash - dt * 2.2);
   if (world.bannerTime > 0) {
     world.bannerTime -= dt;
     if (world.bannerTime <= 0) {

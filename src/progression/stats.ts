@@ -33,12 +33,14 @@ export interface PlayerStats {
   // Resistances (0..1 fraction of damage removed)
   reflectResist: number;
   roosterResist: number;
+  armor: number; // 0..1 flat fraction off ALL incoming damage
 
   // Utility
   magnet: number; // radius within which prey drift toward the basilisk
   fearAura: number; // radius within which enemies slow / flee
   xpGain: number; // multiplier on XP gained
   pickupRange: number; // bonus to eat radius
+  lifesteal: number; // HP restored per enemy slain
 }
 
 export function createStats(): PlayerStats {
@@ -69,6 +71,7 @@ export function createStats(): PlayerStats {
 
     reflectResist: 0,
     roosterResist: 0,
+    armor: 0,
 
     // Innate "devouring pull": prey within this radius drift into the maw,
     // so the eat-to-grow loop is forgiving (Vampire-Survivors-style pickup).
@@ -76,5 +79,6 @@ export function createStats(): PlayerStats {
     fearAura: 0,
     xpGain: 1,
     pickupRange: 7,
+    lifesteal: 0,
   };
 }
